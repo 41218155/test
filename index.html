@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>翻翻星球 · 記憶配對</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,"Microsoft JhengHei",sans-serif;background:#101326;color:#f4f3ff}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(ellipse at 20% 0%,#39306a 0,transparent 50%),radial-gradient(ellipse at 100% 100%,#15434a 0,transparent 45%),#101326}main{width:min(100%,620px)}.eyebrow{color:#b4a6ff;letter-spacing:3px;font-size:12px;font-weight:700}h1{font-size:clamp(30px,7vw,44px);margin:10px 0}p{color:#b8bdd2;line-height:1.7;margin:0 0 24px}.stats{display:flex;gap:12px;margin:24px 0}.stat{flex:1;background:#ffffff08;border:1px solid #ffffff12;border-radius:16px;padding:14px 18px}.stat small{display:block;color:#b8bdd2;font-size:12px}.stat strong{display:block;margin-top:5px;font-size:25px}.board{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card{aspect-ratio:1;border:1px solid #ffffff18;border-radius:18px;background:linear-gradient(145deg,#35354f,#24243a);color:#aca3df;font-size:clamp(26px,7vw,43px);cursor:pointer;transition:transform .18s,background .18s;box-shadow:0 5px 12px #0002}.card:hover{transform:translateY(-3px);border-color:#a99df5}.card:focus-visible,button:focus-visible{outline:3px solid #b4a6ff;outline-offset:4px}.card.open{background:#ece8ff;color:#25213e;transform:rotate(-2deg)}.card.matched{background:#1e4d47;border-color:#5edbb4;cursor:default;transform:none}.actions{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:24px}#status{color:#c6c5da;font-size:14px;line-height:1.6}#reset{flex-shrink:0;border:0;border-radius:12px;padding:13px 20px;background:#b7a7ff;color:#211b3a;font:inherit;font-weight:700;cursor:pointer}footer{text-align:center;margin-top:26px;color:#797f9c;font-size:12px}@media(max-width:430px){body{padding:18px}.board{gap:8px}.card{border-radius:12px}.stat{padding:12px}.actions{align-items:flex-start}}@media(prefers-reduced-motion:reduce){.card{transition:none}}
+</style>
+</head>
+<body><main>
+<div class="eyebrow">MEMORY / MINI GAME</div><h1>翻翻星球 🪐</h1>
+<p>翻開兩張牌，找到相同的星球夥伴。<br>16 張牌、8 組配對，試試你能用幾步完成！</p>
+<div class="stats"><div class="stat"><small>翻牌步數</small><strong id="moves">0</strong></div><div class="stat"><small>遊戲時間</small><strong id="time">00:00</strong></div><div class="stat"><small>完成配對</small><strong id="pairs">0 / 8</strong></div></div>
+<section class="board" id="board" aria-label="配對卡牌"></section>
+<div class="actions"><div id="status" role="status" aria-live="polite">點一張牌，開始你的探索。</div><button id="reset" type="button">重新開始 ↻</button></div>
+<footer>滑鼠點擊 · 手機觸碰 · 鍵盤 Tab + Enter</footer>
+</main><script>
+(() => {
+  const icons=['🚀','🪐','🌙','⭐','👽','☄️','🛸','🌍'];
+  const names=['火箭','土星','月亮','星星','外星人','彗星','飛碟','地球'];
+  const board=document.getElementById('board'),status=document.getElementById('status');
+  let first=null,locked=false,moves=0,pairs=0,started=0,timer=null,pending=null;
+  function elapsed(){return started?Math.floor((Date.now()-started)/1000):0;}
+  function tick(){const s=elapsed();document.getElementById('time').textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
+  function conceal(card){card.textContent='✦';card.classList.remove('open');card.setAttribute('aria-label',`第 ${Number(card.dataset.position)+1} 張，未翻開`);}
+  function reveal(card){card.textContent=icons[card.dataset.value];card.classList.add('open');card.setAttribute('aria-label',names[card.dataset.value]);}
+  function play(card){
+    if(locked||card===first||card.classList.contains('matched'))return;
+    if(!started){started=Date.now();timer=setInterval(tick,250);}
+    reveal(card);
+    if(!first){first=card;status.textContent='再翻一張，找到它的夥伴。';return;}
+    moves++;document.getElementById('moves').textContent=moves;
+    const previous=first;first=null;
+    if(previous.dataset.value===card.dataset.value){
+      [previous,card].forEach(c=>{c.classList.remove('open');c.classList.add('matched');c.setAttribute('aria-disabled','true');c.setAttribute('aria-label',names[c.dataset.value]+'，已配對');});
+      pairs++;document.getElementById('pairs').textContent=pairs+' / 8';
+      status.textContent='配對成功！繼續探索 ✨';
+      if(pairs===8){clearInterval(timer);tick();status.textContent=`🎉 全部找到了！你用了 ${moves} 步、${elapsed()} 秒。再挑戰一次吧！`;}
+    }else{locked=true;status.textContent='還差一點！記住它們的位置。';pending=setTimeout(()=>{conceal(previous);conceal(card);locked=false;pending=null;},850);}
+  }
+  function reset(){
+    clearInterval(timer);clearTimeout(pending);first=null;locked=false;moves=0;pairs=0;started=0;timer=null;pending=null;
+    document.getElementById('moves').textContent='0';document.getElementById('pairs').textContent='0 / 8';tick();status.textContent='點一張牌，開始你的探索。';
+    const deck=[...icons.keys(),...icons.keys()];
+    for(let i=deck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];}
+    board.replaceChildren();deck.forEach((value,position)=>{const card=document.createElement('button');card.type='button';card.className='card';card.dataset.value=value;card.dataset.position=position;conceal(card);card.addEventListener('click',()=>play(card));board.append(card);});
+  }
+  document.getElementById('reset').addEventListener('click',reset);reset();
+})();
+</script></body></html>
